@@ -98,5 +98,9 @@ export const ROUTES = {
     orders: '/admin/orders',
     users: '/admin/users',
     analytics: '/admin/analytics',
+    withdrawals: '/admin/withdrawals',
+    queues: '/admin/queues',
+    giftCards: '/admin/gift-cards',
+    cms: '/admin/cms',
   },
 } as const;

@@ -51,7 +51,13 @@ export function WithdrawForm({ open, onClose, balance, onSubmit }: WithdrawFormP
     gift_card: Gift,
   };
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: {
+    amount: number;
+    upi_id?: string;
+    account_number?: string;
+    ifsc_code?: string;
+    account_name?: string;
+  }) => {
     setError(null);
     setIsSubmitting(true);
 

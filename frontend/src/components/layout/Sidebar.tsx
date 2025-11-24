@@ -55,8 +55,23 @@ const adminNavItems = [
   },
   {
     title: "Withdrawals",
-    href: "/admin/withdrawals",
+    href: ROUTES.admin.withdrawals,
     icon: Wallet,
+  },
+  {
+    title: "Queues",
+    href: ROUTES.admin.queues,
+    icon: FileText,
+  },
+  {
+    title: "Gift Cards",
+    href: ROUTES.admin.giftCards,
+    icon: Gift,
+  },
+  {
+    title: "CMS",
+    href: ROUTES.admin.cms,
+    icon: FileText,
   },
   {
     title: "Analytics",

@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's what's happening.</p>
+        <p className="text-muted-foreground">Welcome back! Here&apos;s what&apos;s happening.</p>
       </div>
 
       {/* Stats Grid */}

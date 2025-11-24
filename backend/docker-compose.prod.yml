@@ -47,9 +47,79 @@ services:
     build: ../services/webhooks
     restart: unless-stopped
 
-  workers:
-    build: ../services/workers
-    command: bun src/index.ts all
+  # Python workers for email/SMS queue processing
+  email-sms-workers:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    command: python -m workers.email_sms_worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      FROM_EMAIL: ${FROM_EMAIL}
+      FROM_NAME: ${FROM_NAME}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY}
+      MSG91_SENDER_ID: ${MSG91_SENDER_ID}
+      MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID}
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  # Cashback sync worker (single instance with distributed lock)
+  cashback-worker:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    command: python -m workers.cashback_sync_worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      ADMITAD_CLIENT_ID: ${ADMITAD_CLIENT_ID}
+      ADMITAD_CLIENT_SECRET: ${ADMITAD_CLIENT_SECRET}
+      ADMITAD_REFRESH_TOKEN: ${ADMITAD_REFRESH_TOKEN}
+      VCOMMISSION_API_KEY: ${VCOMMISSION_API_KEY}
+      CUELINKS_API_KEY: ${CUELINKS_API_KEY}
+      CUELINKS_PUBLISHER_ID: ${CUELINKS_PUBLISHER_ID}
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  # Cron jobs worker
+  cron-worker:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    command: python -m workers.cron_jobs
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      SECRET_KEY: ${SECRET_KEY}
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    depends_on:
+      - redis
+      - postgres
     restart: unless-stopped
 
   redis:

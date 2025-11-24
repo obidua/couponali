@@ -36,7 +36,16 @@ export default function ProfilePage() {
     },
   });
 
-  const onSubmit = async (data: any) => {
+  type ProfileForm = {
+    first_name: string;
+    last_name: string;
+    email: string;
+    mobile: string;
+    date_of_birth?: string;
+    gender?: string;
+  };
+
+  const onSubmit = async (data: ProfileForm) => {
     setIsSaving(true);
     try {
       // Mock API call

@@ -1283,9 +1283,9 @@ All 32 models implemented in `backend/app/models/`:
 - ✅ Admin specifications created
 - ✅ Security checklist established
 
-**Pending:**
-- ⏳ User journey flow diagrams (visual wireframes)
-- ⏳ Final merchant partnership agreements
+**Completed:**
+- ✅ User journey flow diagrams (see docs/USER-JOURNEYS.md)
+- ✅ Merchant partnership plan drafted (see docs/MERCHANT-PARTNERSHIP-PLAN.md)
 
 ---
 
