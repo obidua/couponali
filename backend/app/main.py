@@ -33,6 +33,7 @@ from .api.v1 import (
     cart,
     health,
     affiliate,
+    queue,
 )
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
@@ -94,6 +95,7 @@ app.include_router(checkout.router, prefix="/api/v1")
 app.include_router(cart.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(affiliate.router, prefix="/api/v1")
+app.include_router(queue.router, prefix="/api/v1")
 
 
 GROUP_ORDER = [

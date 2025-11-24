@@ -28,38 +28,23 @@ async def health_check(db: Session = Depends(get_db)):
 
 @router.get("/redis")
 async def redis_health():
-    """Redis health check with queue statistics"""
+    """Redis health check with queue statistics (updated structure)."""
     try:
-        # Ping Redis
         redis_client.ping()
-        
-        # Get queue statistics
-        stats = get_queue_stats(redis_client)
-        
+        stats = get_queue_stats()
         return {
             "status": "healthy",
             "redis": "connected",
-            "queues": {
-                "email": {
-                    "pending": stats.get("email_pending", 0),
-                    "processing": stats.get("email_processing", 0),
-                    "dead_letter": stats.get("email_dead_letter", 0)
-                },
-                "sms": {
-                    "pending": stats.get("sms_pending", 0),
-                    "processing": stats.get("sms_processing", 0),
-                    "dead_letter": stats.get("sms_dead_letter", 0)
-                }
-            },
+            "queues": stats,
             "total": {
-                "pending": stats.get("total_pending", 0),
-                "processing": stats.get("total_processing", 0),
-                "dead_letter": stats.get("total_dead_letter", 0)
-            }
+                "pending": stats["email"]["pending"] + stats["sms"]["pending"],
+                "processing": stats["email"]["processing"] + stats["sms"]["processing"],
+                "dead_letter": stats["email"]["dead_letter"] + stats["sms"]["dead_letter"],
+            },
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "redis": f"error: {str(e)}",
-            "queues": None
+            "queues": None,
         }
