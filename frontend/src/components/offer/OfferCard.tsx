@@ -31,7 +31,7 @@ export function OfferCard({ offer, onClickTrack }: OfferCardProps) {
   };
 
   return (
-    <Card className="group relative overflow-hidden transition-shadow hover:shadow-lg">
+    <Card className="elevated-card group relative overflow-hidden">
       {/* Offer Image */}
       {offer.image_url && (
         <div className="relative h-40 w-full overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
@@ -39,7 +39,7 @@ export function OfferCard({ offer, onClickTrack }: OfferCardProps) {
             src={offer.image_url}
             alt={offer.title}
             fill
-            className="object-cover transition-transform group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </div>
       )}
@@ -86,7 +86,7 @@ export function OfferCard({ offer, onClickTrack }: OfferCardProps) {
                 {offer.merchant.name}
               </Link>
             )}
-            <h3 className="font-semibold leading-tight line-clamp-2">{offer.title}</h3>
+            <h3 className="font-semibold leading-tight line-clamp-2 group-hover:text-primary transition-colors">{offer.title}</h3>
           </div>
         </div>
       </CardHeader>

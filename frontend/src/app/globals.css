@@ -59,6 +59,18 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+    /* Unified elevated card styling */
+    .elevated-card {
+      @apply rounded-xl border bg-white/80 backdrop-blur-sm shadow-sm transition-all duration-200;
+    }
+    .elevated-card:hover {
+      @apply shadow-md;
+    }
+    .elevated-card:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
 }
 
 /* Container styles */
@@ -118,3 +130,32 @@
     height: 0;
   }
 }
+
+/* Hide Next.js development floating indicator / dev tools button (circle "N") */
+#__nextjs-devtools-root,
+#__nextjs-devtools-button,
+#__nextjs-dev-overlay,
+div[id^="__nextjs"] button[aria-label*="Next.js"],
+button[aria-label*="Next.js"],
+[data-nextjs-devtools],
+[data-nextjs-devtools-button],
+[aria-label="Next.js Build Indicator"],
+[aria-label="Next.js build indicator"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+@keyframes more-menu-fade {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+ .animate-more-menu {
+  animation: more-menu-fade .28s cubic-bezier(.22,.61,.36,1);
+ }

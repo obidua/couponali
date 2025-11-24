@@ -46,7 +46,7 @@ export function ProductCard({ product }: ProductCardProps) {
     : 0;
 
   return (
-    <Card className="group relative overflow-hidden transition-shadow hover:shadow-lg">
+    <Card className="elevated-card group relative overflow-hidden">
       {/* Bestseller Badge */}
       {product.is_bestseller && (
         <Badge className="absolute right-2 top-2 z-10 gap-1" variant="warning">
@@ -63,7 +63,9 @@ export function ProductCard({ product }: ProductCardProps) {
                 src={product.image_url}
                 alt={product.name}
                 fill
-                className="object-cover transition-transform group-hover:scale-105"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                priority={product.is_bestseller}
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-muted text-4xl font-bold text-muted-foreground">
@@ -76,7 +78,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
       <CardContent className="p-4">
         <Link href={ROUTES.productDetail(product.slug)}>
-          <h3 className="font-semibold line-clamp-2 hover:text-primary">{product.name}</h3>
+          <h3 className="font-semibold line-clamp-2 transition-colors group-hover:text-primary">{product.name}</h3>
         </Link>
         {product.merchant && (
           <p className="mt-1 text-sm text-muted-foreground">{product.merchant.name}</p>

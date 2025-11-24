@@ -14,8 +14,8 @@ interface MerchantCardProps {
 
 export function MerchantCard({ merchant }: MerchantCardProps) {
   return (
-    <Link href={ROUTES.merchantDetail(merchant.slug)}>
-      <Card className="group overflow-hidden transition-shadow hover:shadow-lg">
+    <Link href={ROUTES.merchantDetail(merchant.slug)} className="block focus:outline-none">
+      <Card className="elevated-card group overflow-hidden">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             {/* Logo */}
@@ -37,7 +37,7 @@ export function MerchantCard({ merchant }: MerchantCardProps) {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold truncate group-hover:text-primary">
+                <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
                   {merchant.name}
                 </h3>
                 {merchant.is_featured && (
