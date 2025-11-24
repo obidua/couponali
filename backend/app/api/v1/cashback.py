@@ -4,6 +4,7 @@ from ...database import get_db
 from ...models import CashbackEvent
 from ...schemas import CashbackEventRead, CashbackEventCreate
 from ...dependencies import require_admin, get_current_user
+from ...redis_client import publish
 
 router = APIRouter(prefix="/cashback", tags=["Cashback"])
 
@@ -17,6 +18,7 @@ def create_event(payload: CashbackEventCreate, db: Session = Depends(get_db), _:
     db.add(ev)
     db.commit()
     db.refresh(ev)
+    publish("events:cashback", {"id": ev.id, "status": ev.status, "user_id": ev.user_id})
     return ev
 
 @router.get("/my", response_model=list[CashbackEventRead])

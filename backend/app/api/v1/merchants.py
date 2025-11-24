@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from ...database import get_db
 from ...models import Merchant, Offer
-from ...redis_client import cache_get, cache_set, cache_invalidate, rk
+from ...redis_client import cache_get, cache_set, cache_invalidate, cache_invalidate_prefix, rk
+from ...dependencies import rate_limit_dependency
 from pydantic import BaseModel
 from math import ceil
+import json, hashlib
 
 router = APIRouter(prefix="/merchants", tags=["Merchants"])
 
@@ -23,9 +25,15 @@ def list_merchants(
     limit: int = 20,
     is_featured: bool | None = None,
     search: str | None = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: dict = Depends(rate_limit_dependency("merchants:list", limit=60, window_seconds=60))
 ):
     """List all merchants with filtering and pagination"""
+    cache_key = rk("cache", "merchants", hashlib.md5(json.dumps({"page": page, "limit": limit, "is_featured": is_featured, "search": search}, sort_keys=True).encode()).hexdigest())
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
     query = select(Merchant).where(Merchant.is_active == True)
     
     if is_featured is not None:
@@ -58,7 +66,7 @@ def list_merchants(
             "offers_count": offers_count,
         })
     
-    return {
+    response = {
         "success": True,
         "data": {
             "merchants": merchants_data,
@@ -70,6 +78,8 @@ def list_merchants(
             },
         },
     }
+    cache_set(cache_key, response, 300)
+    return response
 
 
 @router.get("/{slug}")

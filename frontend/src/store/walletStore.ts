@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import type { Wallet, WalletTransaction, CashbackEvent, WithdrawalRequest } from '@/types';
-import { walletAPI } from '@/lib/api/wallet';
+import type { WalletTransaction, CashbackEvent, WithdrawalRequest } from '@/types';
+import { walletAPI, type WalletSummary } from '@/lib/api/wallet';
 
 interface WalletState {
-  wallet: Wallet | null;
+  wallet: WalletSummary | null;
   transactions: WalletTransaction[];
   cashbackEvents: CashbackEvent[];
   withdrawalRequests: WithdrawalRequest[];
@@ -43,8 +43,8 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
   fetchTransactions: async (page = 1, pageSize = 20) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await walletAPI.getTransactions(page, pageSize);
-      set({ transactions: response.items, isLoading: false });
+      const response = await walletAPI.getTransactions({ page, limit: pageSize });
+      set({ transactions: response.items || [], isLoading: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch transactions',
@@ -56,8 +56,9 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
   fetchCashbackEvents: async (status?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await walletAPI.getCashbackEvents(status);
-      set({ cashbackEvents: response.items, isLoading: false });
+      // Cashback events would come from transactions with type 'cashback'
+      const response = await walletAPI.getTransactions({ type: 'cashback' });
+      set({ cashbackEvents: response.items || [], isLoading: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch cashback events',
@@ -69,8 +70,8 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
   fetchWithdrawalRequests: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await walletAPI.getWithdrawalRequests();
-      set({ withdrawalRequests: response.items, isLoading: false });
+      const response = await walletAPI.getWithdrawals();
+      set({ withdrawalRequests: response.items || [], isLoading: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch withdrawal requests',
@@ -82,7 +83,11 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
   requestWithdrawal: async (amount: number, method: string, accountDetails: Record<string, string>) => {
     set({ isLoading: true, error: null });
     try {
-      await walletAPI.requestWithdrawal(amount, method, accountDetails);
+      await walletAPI.requestWithdrawal({
+        amount,
+        method: method as 'bank_transfer' | 'upi' | 'paytm',
+        ...accountDetails
+      });
       // Refresh wallet and withdrawal requests
       await get().fetchWallet();
       await get().fetchWithdrawalRequests();

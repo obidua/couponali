@@ -11,14 +11,28 @@ import { Button } from "@/components/ui/button";
 import { Search, SlidersHorizontal } from "lucide-react";
 import type { Offer } from "@/types";
 
-// Mock data
+// Mock data with local images from /public/images/
 const mockOffers: Offer[] = [
   {
     id: 1,
     merchant_id: 1,
-    merchant: { id: 1, name: "Amazon", slug: "amazon", website_url: "", affiliate_url: "", default_cashback_type: "percentage", default_cashback_value: 10, is_featured: true, is_active: true, created_at: "", updated_at: "" },
+    merchant: {
+      id: 1,
+      name: "Amazon",
+      slug: "amazon",
+      logo_url: "/images/merchants/merchant-1.png",
+      website_url: "https://amazon.in",
+      affiliate_url: "https://amazon.in",
+      default_cashback_type: "percentage",
+      default_cashback_value: 10,
+      is_featured: true,
+      is_active: true,
+      created_at: "",
+      updated_at: ""
+    },
     title: "50% Off on Electronics",
     description: "Get up to 50% discount on laptops, mobiles, and accessories",
+    image_url: "/images/offers/1.png",
     offer_type: "code",
     coupon_code: "ELEC50",
     discount_type: "percentage",
@@ -39,9 +53,23 @@ const mockOffers: Offer[] = [
   {
     id: 2,
     merchant_id: 2,
-    merchant: { id: 2, name: "Flipkart", slug: "flipkart", website_url: "", affiliate_url: "", default_cashback_type: "percentage", default_cashback_value: 8, is_featured: true, is_active: true, created_at: "", updated_at: "" },
+    merchant: {
+      id: 2,
+      name: "Flipkart",
+      slug: "flipkart",
+      logo_url: "/images/merchants/merchant-2.png",
+      website_url: "https://flipkart.com",
+      affiliate_url: "https://flipkart.com",
+      default_cashback_type: "percentage",
+      default_cashback_value: 8,
+      is_featured: true,
+      is_active: true,
+      created_at: "",
+      updated_at: ""
+    },
     title: "Big Billion Days Special - Extra 10% Off",
     description: "Additional discount during sale period",
+    image_url: "/images/offers/2.png",
     offer_type: "code",
     coupon_code: "BBD10",
     discount_type: "percentage",
@@ -60,9 +88,23 @@ const mockOffers: Offer[] = [
   {
     id: 3,
     merchant_id: 3,
-    merchant: { id: 3, name: "Myntra", slug: "myntra", website_url: "", affiliate_url: "", default_cashback_type: "percentage", default_cashback_value: 12, is_featured: false, is_active: true, created_at: "", updated_at: "" },
+    merchant: {
+      id: 3,
+      name: "Myntra",
+      slug: "myntra",
+      logo_url: "/images/merchants/merchant-3.png",
+      website_url: "https://myntra.com",
+      affiliate_url: "https://myntra.com",
+      default_cashback_type: "percentage",
+      default_cashback_value: 12,
+      is_featured: false,
+      is_active: true,
+      created_at: "",
+      updated_at: ""
+    },
     title: "Flat 40% Off on Fashion",
     description: "Shop the latest trends at discounted prices",
+    image_url: "/images/offers/3.png",
     offer_type: "deal",
     discount_type: "percentage",
     discount_value: 40,
@@ -80,9 +122,23 @@ const mockOffers: Offer[] = [
   {
     id: 4,
     merchant_id: 4,
-    merchant: { id: 4, name: "Swiggy", slug: "swiggy", website_url: "", affiliate_url: "", default_cashback_type: "percentage", default_cashback_value: 5, is_featured: true, is_active: true, created_at: "", updated_at: "" },
+    merchant: {
+      id: 4,
+      name: "Swiggy",
+      slug: "swiggy",
+      logo_url: "/images/merchants/merchant-4.png",
+      website_url: "https://swiggy.com",
+      affiliate_url: "https://swiggy.com",
+      default_cashback_type: "percentage",
+      default_cashback_value: 5,
+      is_featured: true,
+      is_active: true,
+      created_at: "",
+      updated_at: ""
+    },
     title: "30% Off on First 3 Orders",
     description: "New user offer on food delivery",
+    image_url: "/images/offers/14.png",
     offer_type: "code",
     coupon_code: "WELCOME30",
     discount_type: "percentage",

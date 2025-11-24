@@ -30,6 +30,9 @@ from .api.v1 import (
     search,
     cms,
     checkout,
+    cart,
+    health,
+    affiliate,
 )
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
@@ -88,6 +91,9 @@ app.include_router(categories.router, prefix="/api/v1")
 app.include_router(search.router, prefix="/api/v1")
 app.include_router(cms.router, prefix="/api/v1")
 app.include_router(checkout.router, prefix="/api/v1")
+app.include_router(cart.router, prefix="/api/v1")
+app.include_router(health.router, prefix="/api/v1")
+app.include_router(affiliate.router, prefix="/api/v1")
 
 
 GROUP_ORDER = [
@@ -103,6 +109,7 @@ GROUP_ORDER = [
     ("Gifts", ["Gifts"]),
     ("Engagement", ["Engagement"]),
     ("Cashback", ["Cashback"]),
+    ("Affiliate", ["Affiliate"]),
     ("Finance", ["Finance"]),
     ("Engagement", ["Search"]),
     ("CMS", ["CMS"]),
@@ -139,6 +146,8 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Serve images directory for merchant logos, offer images, etc.
+app.mount("/images", StaticFiles(directory="app/images"), name="images")
 
 @app.get("/docs", include_in_schema=False)
 def custom_docs():

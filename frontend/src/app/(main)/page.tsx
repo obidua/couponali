@@ -211,14 +211,14 @@ export default function HomePage() {
                   
                   <div className="p-4">
                     <Badge variant="secondary" className="mb-2">
-                      {offer.merchant.name}
+                      {offer.merchant?.name || "Unknown"}
                     </Badge>
                     <h3 className="font-semibold line-clamp-2">{offer.title}</h3>
                     <div className="mt-4">
-                      {offer.code ? (
+                      {offer.coupon_code ? (
                         <div className="flex items-center gap-2 rounded-lg border-2 border-dashed border-primary bg-primary/5 p-2">
                           <code className="flex-1 font-mono text-sm font-bold text-primary">
-                            {offer.code}
+                            {offer.coupon_code}
                           </code>
                           <Button size="sm" variant="default">
                             Copy

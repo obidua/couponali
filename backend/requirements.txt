@@ -11,7 +11,7 @@ psycopg[binary]==3.2.3
 
 # Redis
 redis==5.2.1
-hiredis==3.0.1
+hiredis==3.3.0
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0

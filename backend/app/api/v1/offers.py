@@ -4,6 +4,9 @@ from sqlalchemy import select, func
 from ...database import get_db
 from ...models import Offer, Merchant
 from pydantic import BaseModel
+from ...redis_client import cache_get, cache_set, cache_invalidate_prefix, rk
+from ...dependencies import rate_limit_dependency
+import json, hashlib
 
 router = APIRouter(prefix="/offers", tags=["Offers"])
 
@@ -20,9 +23,24 @@ def list_offers(
     limit: int = 20,
     merchant_id: int | None = None,
     search: str | None = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: dict = Depends(rate_limit_dependency("offers:list", limit=100, window_seconds=60))
 ):
     """List all offers with filtering and pagination"""
+    cache_key = rk(
+        "cache",
+        "offers",
+        hashlib.md5(
+            json.dumps(
+                {"page": page, "limit": limit, "merchant_id": merchant_id, "search": search},
+                sort_keys=True,
+            ).encode()
+        ).hexdigest(),
+    )
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
     query = select(Offer, Merchant).join(Merchant).where(Offer.is_active == True)
     
     if merchant_id:
@@ -68,7 +86,7 @@ def list_offers(
             }
         })
     
-    return {
+    response = {
         "success": True,
         "data": offers,
         "pagination": {
@@ -78,6 +96,8 @@ def list_offers(
             "pages": (total + limit - 1) // limit
         }
     }
+    cache_set(cache_key, response, 300)
+    return response
 
 
 @router.get("/{offer_id}")

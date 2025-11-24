@@ -1,10 +1,17 @@
 import postgres from "postgres";
+import Redis from "ioredis";
 
 const sql = postgres(process.env.DATABASE_URL!, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
 });
+
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+const RATE_LIMIT = parseInt(process.env.RATE_LIMIT_PER_MINUTE || "120", 10);
+const RATE_WINDOW_SECONDS = 60;
+const CLICK_QUEUE = process.env.CLICK_QUEUE || "queue:clicks";
+const URL_CACHE_TTL = 300;
 
 interface ClickParams {
   offerId: string;
@@ -26,6 +33,12 @@ function parseClickUrl(pathname: string): ClickParams | null {
 }
 
 async function getOfferRedirectUrl(offerId: string): Promise<string | null> {
+  const cacheKey = `redirect:url:${offerId}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const [offer] = await sql`
     SELECT o.affiliate_url, m.tracking_url_template, m.affiliate_id
     FROM offers o
@@ -40,14 +53,18 @@ async function getOfferRedirectUrl(offerId: string): Promise<string | null> {
   if (!offer) return null;
 
   if (offer.affiliate_url) {
-    return offer.affiliate_url as string;
+    const url = offer.affiliate_url as string;
+    await redis.setex(cacheKey, URL_CACHE_TTL, url);
+    return url;
   }
 
   if (offer.tracking_url_template) {
-    return (offer.tracking_url_template as string).replace(
+    const url = (offer.tracking_url_template as string).replace(
       "{affiliate_id}",
       (offer.affiliate_id as string | null) || "",
     );
+    await redis.setex(cacheKey, URL_CACHE_TTL, url);
+    return url;
   }
 
   return null;
@@ -60,6 +77,21 @@ async function logClick(params: ClickParams, request: Request): Promise<void> {
     request.headers.get("x-real-ip") ||
     "";
   const referrer = request.headers.get("referer") || "";
+  const payload = {
+    ...params,
+    ua: userAgent,
+    ip,
+    referrer,
+    ts: Date.now(),
+  };
+
+  // Push to Redis queue; if fails, fall back to direct write
+  try {
+    await redis.rpush(CLICK_QUEUE, JSON.stringify(payload));
+    return;
+  } catch (err) {
+    console.warn("Redis unavailable, falling back to direct DB logging", err);
+  }
 
   let deviceType = "desktop";
   if (/mobile/i.test(userAgent)) deviceType = "mobile";
@@ -96,24 +128,46 @@ async function logClick(params: ClickParams, request: Request): Promise<void> {
   }
 }
 
+async function rateLimit(ip: string): Promise<boolean> {
+  const key = `rl:redirect:${ip}`;
+  const count = await redis.incr(key);
+  if (count === 1) {
+    await redis.expire(key, RATE_WINDOW_SECONDS);
+  }
+  return count <= RATE_LIMIT;
+}
+
 const server = Bun.serve({
   port: process.env.PORT || 3001,
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/health") {
-      return new Response("OK", { status: 200 });
-    }
+  if (url.pathname === "/health") {
+    return new Response("OK", { status: 200 });
+  }
 
-    const params = parseClickUrl(url.pathname);
-    if (!params) {
-      return new Response("Invalid redirect URL", { status: 400 });
-    }
+  const params = parseClickUrl(url.pathname);
+  if (!params) {
+    return new Response("Invalid redirect URL", { status: 400 });
+  }
 
-    const redirectUrl = await getOfferRedirectUrl(params.offerId);
-    if (!redirectUrl) {
-      return new Response("Offer not found or expired", { status: 404 });
-    }
+  const ip =
+    request.headers.get("x-forwarded-for") ||
+    request.headers.get("x-real-ip") ||
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-client-ip") ||
+    request.headers.get("remote-addr") ||
+    "unknown";
+
+  const allowed = await rateLimit(ip);
+  if (!allowed) {
+    return new Response("Rate limit exceeded", { status: 429 });
+  }
+
+  const redirectUrl = await getOfferRedirectUrl(params.offerId);
+  if (!redirectUrl) {
+    return new Response("Offer not found or expired", { status: 404 });
+  }
 
     logClick(params, request).catch(console.error);
 

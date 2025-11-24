@@ -89,6 +89,7 @@ export interface Offer {
   merchant?: Merchant;
   title: string;
   description?: string;
+  image_url?: string;
   offer_type: 'code' | 'deal' | 'cashback';
   coupon_code?: string;
   discount_type?: 'percentage' | 'fixed';

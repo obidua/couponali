@@ -34,6 +34,14 @@ MERCHANTS_DATA = [
     {"name": "Uber", "slug": "uber", "description": "Ride & food delivery"},
     {"name": "Ajio", "slug": "ajio", "description": "Trendy fashion & accessories"},
     {"name": "BigBasket", "slug": "bigbasket", "description": "Online grocery shopping"},
+    {"name": "Nykaa", "slug": "nykaa", "description": "Beauty, wellness and personal care"},
+    {"name": "Tata Cliq", "slug": "tatacliq", "description": "Premium fashion and electronics"},
+    {"name": "Croma", "slug": "croma", "description": "Electronics and appliances"},
+    {"name": "Pepperfry", "slug": "pepperfry", "description": "Furniture and home decor"},
+    {"name": "Dominos", "slug": "dominos", "description": "Pizzas and sides delivered hot"},
+    {"name": "Reliance Trends", "slug": "reliance-trends", "description": "Value fashion for everyone"},
+    {"name": "FirstCry", "slug": "firstcry", "description": "Baby & kids store"},
+    {"name": "PharmEasy", "slug": "pharmeasy", "description": "Medicines and diagnostics"},
 ]
 
 CATEGORIES_DATA = [
@@ -45,6 +53,9 @@ CATEGORIES_DATA = [
     {"name": "Groceries", "slug": "groceries"},
     {"name": "Health & Beauty", "slug": "health-beauty"},
     {"name": "Home & Living", "slug": "home-living"},
+    {"name": "Baby & Kids", "slug": "baby-kids"},
+    {"name": "Pharmacy", "slug": "pharmacy"},
+    {"name": "Sports & Fitness", "slug": "sports-fitness"},
 ]
 
 GIFT_CARDS_DATA = [
@@ -58,6 +69,14 @@ GIFT_CARDS_DATA = [
     {"name": "Zomato Gift Voucher", "slug": "zomato-voucher", "image_url": "/images/gift-cards/9.png", "min_value": 100, "max_value": 2000},
     {"name": "Ajio Gift Card", "slug": "ajio-gc", "image_url": "/images/gift-cards/10.png", "min_value": 500, "max_value": 5000},
     {"name": "BigBasket E-Gift Card", "slug": "bigbasket-egift", "image_url": "/images/gift-cards/11.png", "min_value": 200, "max_value": 5000},
+    {"name": "Nykaa Luxe Card", "slug": "nykaa-luxe", "image_url": "/images/gift-cards/12.png", "min_value": 250, "max_value": 5000},
+    {"name": "Tata Cliq Card", "slug": "tatacliq-card", "image_url": "/images/gift-cards/13.png", "min_value": 250, "max_value": 7500},
+    {"name": "Croma Store Card", "slug": "croma-card", "image_url": "/images/gift-cards/14.png", "min_value": 500, "max_value": 15000},
+    {"name": "Pepperfry Decor Pass", "slug": "pepperfry-pass", "image_url": "/images/gift-cards/15.png", "min_value": 500, "max_value": 10000},
+    {"name": "Dominos Party Card", "slug": "dominos-card", "image_url": "/images/gift-cards/16.png", "min_value": 200, "max_value": 2000},
+    {"name": "Reliance Trends Cash Card", "slug": "reliance-trends-card", "image_url": "/images/gift-cards/17.png", "min_value": 300, "max_value": 5000},
+    {"name": "FirstCry Super Card", "slug": "firstcry-card", "image_url": "/images/gift-cards/18.png", "min_value": 250, "max_value": 5000},
+    {"name": "PharmEasy Health Card", "slug": "pharmeasy-card", "image_url": "/images/gift-cards/19.png", "min_value": 200, "max_value": 3000},
 ]
 
 def seed_admin_user(session: Session):
@@ -150,7 +169,7 @@ def seed_offers(session: Session):
         if existing:
             continue
             
-        # Create 2-3 offers per merchant with images
+        # Create 3 offers per merchant with images
         offer_images = [f"/images/offers/{i}.png" for i in [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 23, 24, 25, 26, 27, 29, 30, 33, 34, 35, 37, 38, 39, 41, 42, 49, 55, 60, 62, 63]]
         
         offer1 = Offer(
@@ -177,6 +196,19 @@ def seed_offers(session: Session):
             ends_at=datetime.utcnow() + timedelta(days=15)
         )
         session.add(offer2)
+        offers_created += 1
+        
+        offer3 = Offer(
+            merchant_id=merchant.id,
+            title=f"{merchant.name} Cashback Fiesta",
+            code=f"{merchant.slug.upper()}CASH",
+            image_url=offer_images[(offers_created * 2 + 2) % len(offer_images)],
+            is_active=True,
+            priority=7,
+            starts_at=datetime.utcnow(),
+            ends_at=datetime.utcnow() + timedelta(days=45)
+        )
+        session.add(offer3)
         offers_created += 1
     
     session.commit()
@@ -212,8 +244,8 @@ def seed_gift_cards(session: Session):
             session.flush()
             giftcards_created += 1
             
-            # Add variants (denominations)
-            denominations = [100, 250, 500, 1000, 2000, 5000]
+            # Add variants (denominations) with mix of smaller and bigger values
+            denominations = [100, 250, 500, 750, 1000, 2000, 3000, 5000, 7500, 10000, 15000]
             for idx, denom in enumerate(denominations):
                 if denom >= gc_data["min_value"] and denom <= gc_data["max_value"]:
                     variant = ProductVariant(
@@ -250,7 +282,8 @@ def main():
             print(f"   - Merchants: {len(session.scalars(select(Merchant)).all())}")
             print(f"   - Categories: {len(session.scalars(select(Category)).all())}")
             print(f"   - Offers: {len(session.scalars(select(Offer)).all())}")
-            print(f"   - Gift Cards: {len(session.scalars(select(Product)).all())}")
+            print(f"   - Gift Cards/Products: {len(session.scalars(select(Product)).all())}")
+            print(f"   - Variants: {len(session.scalars(select(ProductVariant)).all())}")
             
         except Exception as e:
             print(f"\n❌ Error during seeding: {e}")

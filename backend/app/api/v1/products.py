@@ -1,5 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+import json, hashlib
+from ...redis_client import cache_get, cache_set, cache_invalidate_prefix, rk
+from ...dependencies import rate_limit_dependency
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -40,8 +43,15 @@ PRODUCT_SAMPLE = {
 
 
 @router.get("/", response_model=dict)
-def list_products(filters: ProductFilters = ProductFilters()):
-    return {
+def list_products(
+    filters: ProductFilters = ProductFilters(),
+    _: dict = Depends(rate_limit_dependency("products:list", limit=100, window_seconds=60)),
+):
+    key = rk("cache", "products", hashlib.md5(json.dumps(filters.model_dump(), sort_keys=True).encode()).hexdigest())
+    cached = cache_get(key)
+    if cached:
+        return cached
+    response = {
         "success": True,
         "data": {
             "products": [PRODUCT_SAMPLE],
@@ -53,6 +63,8 @@ def list_products(filters: ProductFilters = ProductFilters()):
             },
         },
     }
+    cache_set(key, response, 300)
+    return response
 
 
 @router.get("/{slug}", response_model=dict)

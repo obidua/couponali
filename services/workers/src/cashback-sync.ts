@@ -1,29 +1,134 @@
 import postgres from "postgres";
+import { Redis } from "ioredis";
 
 const sql = postgres(process.env.DATABASE_URL!);
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
-interface AdmitadTransaction {
+type AffiliateStatus = "pending" | "approved" | "rejected" | "cancelled" | "hold";
+
+interface AffiliateTransaction {
+  network: "admitad" | "vcommission" | "cuelinks";
   id: string;
-  subid: string;
-  action_date: string;
-  payment_amount: number;
-  payment_status: string;
+  subid: string; // our click/coupon tracking id
+  actionDate: string;
+  amount: number;
+  status: AffiliateStatus;
+  merchantName?: string;
+  offerName?: string;
+  currency?: string;
 }
 
-async function syncAdmitadCashback(): Promise<void> {
-  const response = await fetch(
-    `https://api.admitad.com/statistics/actions/?date_start=${getDateDaysAgo(30)}&limit=100`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.ADMITAD_ACCESS_TOKEN}`,
-      },
-    },
-  );
+const STATUS_MAP: Record<string, AffiliateStatus> = {
+  approved: "approved",
+  confirmed: "approved",
+  pending: "pending",
+  hold: "pending",
+  rejected: "rejected",
+  declined: "rejected",
+  cancelled: "cancelled",
+};
 
-  const data = await response.json();
-  const transactions: AdmitadTransaction[] = data.results;
+/**
+ * Fetch from Admitad API
+ */
+async function fetchAdmitad(): Promise<AffiliateTransaction[]> {
+  if (!process.env.ADMITAD_ACCESS_TOKEN) {
+    console.warn("[admitad] Missing ADMITAD_ACCESS_TOKEN; skipping.");
+    return [];
+  }
+  const url = `https://api.admitad.com/statistics/actions/?date_start=${getDateDaysAgo(7)}&limit=100`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.ADMITAD_ACCESS_TOKEN}` },
+  });
+  if (!res.ok) {
+    console.error("[admitad] API error", res.status, await res.text());
+    return [];
+  }
+  const data = await res.json();
+  return (data.results || []).map((row: any) => ({
+    network: "admitad",
+    id: String(row.action_id || row.id),
+    subid: String(row.subid || row.sub_id || ""),
+    actionDate: row.action_date,
+    amount: Number(row.payment_amount || row.payment || 0),
+    status: normalizeStatus(row.payment_status || row.status),
+    merchantName: row.campaign_name,
+    offerName: row.tariff || row.link,
+    currency: row.currency,
+  }));
+}
 
+/**
+ * Fetch from VCommission API
+ */
+async function fetchVCommission(): Promise<AffiliateTransaction[]> {
+  if (!process.env.VCOMMISSION_TOKEN) {
+    console.warn("[vcommission] Missing VCOMMISSION_TOKEN; skipping.");
+    return [];
+  }
+  const url = `https://api.vcommission.com/transactions?from=${getDateDaysAgo(7)}&limit=100`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.VCOMMISSION_TOKEN}` },
+  });
+  if (!res.ok) {
+    console.error("[vcommission] API error", res.status, await res.text());
+    return [];
+  }
+  const { data } = await res.json();
+  return (data || []).map((row: any) => ({
+    network: "vcommission",
+    id: String(row.id),
+    subid: String(row.subid || row.subid_one || ""),
+    actionDate: row.datetime || row.date,
+    amount: Number(row.sale_amount || row.payout || 0),
+    status: normalizeStatus(row.status),
+    merchantName: row.merchant_name,
+    offerName: row.offer_name,
+    currency: row.currency,
+  }));
+}
+
+/**
+ * Fetch from CueLinks API
+ */
+async function fetchCuelinks(): Promise<AffiliateTransaction[]> {
+  if (!process.env.CUELINKS_API_KEY) {
+    console.warn("[cuelinks] Missing CUELINKS_API_KEY; skipping.");
+    return [];
+  }
+  const url = `https://api.cuelinks.com/transactions?start_date=${getDateDaysAgo(7)}&end_date=${getDateDaysAgo(0)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.CUELINKS_API_KEY}` },
+  });
+  if (!res.ok) {
+    console.error("[cuelinks] API error", res.status, await res.text());
+    return [];
+  }
+  const { transactions } = await res.json();
+  return (transactions || []).map((row: any) => ({
+    network: "cuelinks",
+    id: String(row.id),
+    subid: String(row.sub_id || row.subid || ""),
+    actionDate: row.date,
+    amount: Number(row.commission || row.amount || 0),
+    status: normalizeStatus(row.status),
+    merchantName: row.merchant,
+    offerName: row.campaign,
+    currency: row.currency,
+  }));
+}
+
+function normalizeStatus(raw: string | undefined): AffiliateStatus {
+  if (!raw) return "pending";
+  return STATUS_MAP[raw.toLowerCase()] || "pending";
+}
+
+async function processTransactions(transactions: AffiliateTransaction[]): Promise<void> {
   for (const tx of transactions) {
+    if (!tx.subid) {
+      continue;
+    }
+
     const [click] = await sql`
       SELECT * FROM offer_clicks
       WHERE click_id::text = ${tx.subid}
@@ -38,44 +143,62 @@ async function syncAdmitadCashback(): Promise<void> {
     `;
 
     if (existing) {
-      if (existing.status !== tx.payment_status) {
+      if (existing.status !== tx.status) {
         await sql`
           UPDATE cashback_events
-          SET
-            status = ${tx.payment_status},
-            updated_at = NOW()
+          SET status = ${tx.status}, updated_at = NOW()
           WHERE id = ${existing.id}
         `;
-
-        if (tx.payment_status === "approved") {
+        if (tx.status === "approved") {
           await creditCashbackToWallet(existing.id);
         }
       }
-    } else {
-      await sql`
-        INSERT INTO cashback_events (
-          user_id,
-          offer_id,
-          click_id,
-          merchant_id,
-          transaction_amount,
-          commission_amount,
-          cashback_amount,
-          status,
-          affiliate_transaction_id
-        )
-        VALUES (
-          ${click.user_id},
-          ${click.offer_id},
-          ${click.click_id},
-          (SELECT merchant_id FROM offers WHERE id = ${click.offer_id}),
-          ${tx.payment_amount},
-          ${tx.payment_amount * 0.05},
-          ${tx.payment_amount * 0.03},
-          ${tx.payment_status},
-          ${tx.id}
-        )
+      continue;
+    }
+
+    const commissionAmount = tx.amount * 0.05;
+    const cashbackAmount = tx.amount * 0.03;
+
+    await sql`
+      INSERT INTO cashback_events (
+        user_id,
+        offer_id,
+        click_id,
+        merchant_id,
+        transaction_amount,
+        commission_amount,
+        cashback_amount,
+        status,
+        affiliate_transaction_id,
+        network,
+        meta
+      )
+      VALUES (
+        ${click.user_id},
+        ${click.offer_id},
+        ${click.click_id},
+        (SELECT merchant_id FROM offers WHERE id = ${click.offer_id}),
+        ${tx.amount},
+        ${commissionAmount},
+        ${cashbackAmount},
+        ${tx.status},
+        ${tx.id},
+        ${tx.network},
+        ${JSON.stringify({
+          merchantName: tx.merchantName,
+          offerName: tx.offerName,
+          currency: tx.currency,
+        })}
+      )
+    `;
+
+    if (tx.status === "approved") {
+      const [created] = await sql`
+        SELECT id FROM cashback_events WHERE affiliate_transaction_id = ${tx.id} LIMIT 1
       `;
+      if (created?.id) {
+        await creditCashbackToWallet(created.id);
+      }
     }
   }
 }
@@ -105,9 +228,9 @@ async function creditCashbackToWallet(cashbackEventId: number): Promise<void> {
       ${cashbackEventId},
       u.wallet_balance,
       u.wallet_balance + ${event.cashback_amount},
-      'Cashback from ' || m.name
+      'Cashback from ' || COALESCE(m.name, 'Unknown merchant')
     FROM users u
-    JOIN merchants m ON m.id = ${event.merchant_id}
+    LEFT JOIN merchants m ON m.id = ${event.merchant_id}
     WHERE u.id = ${event.user_id}
   `;
 
@@ -126,20 +249,31 @@ async function creditCashbackToWallet(cashbackEventId: number): Promise<void> {
     WHERE id = ${cashbackEventId}
   `;
 
-  await sql`
-    INSERT INTO email_queue (type, to, data)
-    SELECT
-      'cashback_confirmed',
-      u.email,
-      jsonb_build_object(
-        'user_name', u.full_name,
-        'cashback_amount', ${event.cashback_amount},
-        'merchant_name', m.name
-      )
+  // Queue cashback confirmation email via Redis
+  const [user] = await sql`
+    SELECT u.email, u.full_name, m.name as merchant_name
     FROM users u
-    JOIN merchants m ON m.id = ${event.merchant_id}
+    LEFT JOIN merchants m ON m.id = ${event.merchant_id}
     WHERE u.id = ${event.user_id}
   `;
+
+  if (user?.email) {
+    await redis.rpush(
+      "queue:email",
+      JSON.stringify({
+        id: `cashback_${cashbackEventId}_${Date.now()}`,
+        type: "cashback_confirmed",
+        to: user.email,
+        data: {
+          user_name: user.full_name,
+          amount: event.cashback_amount,
+          merchant_name: user.merchant_name || "merchant",
+        },
+        attempts: 0,
+        createdAt: new Date().toISOString(),
+      })
+    );
+  }
 }
 
 function getDateDaysAgo(days: number): string {
@@ -152,7 +286,12 @@ async function runScheduledSync(): Promise<void> {
   while (true) {
     try {
       console.log("Starting cashback sync...");
-      await syncAdmitadCashback();
+      const allTxs: AffiliateTransaction[] = [];
+      allTxs.push(...(await fetchAdmitad()));
+      allTxs.push(...(await fetchVCommission()));
+      allTxs.push(...(await fetchCuelinks()));
+      console.log(`Fetched ${allTxs.length} affiliate transactions`);
+      await processTransactions(allTxs);
       console.log("Cashback sync completed");
     } catch (error) {
       console.error("Error in cashback sync:", error);

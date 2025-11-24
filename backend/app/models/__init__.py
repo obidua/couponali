@@ -27,3 +27,7 @@ from .payment import Payment
 from .withdrawal import Withdrawal
 from .seo_redirect import SEORedirect
 from .cms_page import CMSPage
+from .promo_code import PromoCode
+from .affiliate_click import AffiliateClick
+from .affiliate_transaction import AffiliateTransaction
+from .affiliate_merchant_map import AffiliateMerchantMap

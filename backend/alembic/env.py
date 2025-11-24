@@ -15,7 +15,7 @@ from app.config import get_settings
 # Import all models so they're registered with Base.metadata
 from app.models import (  # noqa
     User, Merchant, Category, Offer, OfferClick, OfferView,
-    Product, ProductVariant, Order, OrderItem,
+    Product, ProductVariant, Order, OrderItem, PromoCode,
     WalletTransaction, WalletBalance, Withdrawal, WithdrawalRequest,
     Payout, MerchantCommission, Payment,
     GiftCard, Referral, CashbackEvent,

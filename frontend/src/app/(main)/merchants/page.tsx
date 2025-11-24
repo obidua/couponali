@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
-import { useMerchants } from "@/lib/api-hooks";
+import { useMerchants } from "@/lib/hooks/use-merchants";
 
 export default function MerchantsPage() {
   const [page, setPage] = useState(1);

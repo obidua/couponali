@@ -12,6 +12,41 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: str = "http://localhost:3000"
     DEFAULT_PASSWORD: str = "hardik123"
+    
+    # SMS Configuration (MSG91)
+    MSG91_AUTH_KEY: str = ""
+    MSG91_SENDER_ID: str = "CPNALI"
+    MSG91_ROUTE: str = "4"  # Transactional route
+    MSG91_DLT_TEMPLATE_ID: str = ""  # DLT Template ID for OTP
+    SMS_ENABLED: bool = False  # Enable in production
+    
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:3000/auth/google/callback"
+    
+    # Razorpay Payment Gateway
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+    
+    # Email Configuration
+    EMAIL_ENABLED: bool = False  # Enable in production
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = "noreply@couponali.com"
+    
+    # Internal service auth
+    INTERNAL_API_KEY: str = ""
+
+    # Affiliate network credentials
+    ADMITAD_CLIENT_ID: str = ""
+    ADMITAD_CLIENT_SECRET: str = ""
+    ADMITAD_TOKEN: str = ""  # OAuth token for Admitad API
+    VCOMMISSION_API_KEY: str = ""
+    CUELINKS_API_KEY: str = ""
 
     class Config:
         env_file = ".env"
