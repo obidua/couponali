@@ -24,6 +24,7 @@ export default function ProfilePage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isDirty },
   } = useForm({
     defaultValues: {
@@ -32,7 +33,7 @@ export default function ProfilePage() {
       email: user?.email || "",
       mobile: user?.mobile || "",
       date_of_birth: user?.date_of_birth || "",
-      gender: user?.gender || "",
+      gender: user?.gender || undefined,
     },
   });
 
@@ -42,7 +43,7 @@ export default function ProfilePage() {
     email: string;
     mobile: string;
     date_of_birth?: string;
-    gender?: string;
+    gender?: 'male' | 'female' | 'other';
   };
 
   const onSubmit = async (data: ProfileForm) => {
@@ -151,7 +152,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Gender</Label>
-                    <Select defaultValue={user?.gender || ""}>
+                    <Select defaultValue={user?.gender || undefined} onValueChange={(val) => setValue('gender', val as ProfileForm['gender'], { shouldDirty: true })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>

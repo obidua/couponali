@@ -1,194 +1,148 @@
-"""Queue management for background jobs using Redis.
-
-This module provides functions to push jobs to Redis queues that are processed
-by Bun worker services (email-worker, sms-worker, cashback-sync).
-"""
+"""Simple Redis-backed cart utilities and lightweight email/SMS job queue helpers."""
+from typing import Any
+from datetime import datetime, timezone
 import json
-import uuid
-from datetime import datetime
-from typing import Any, Dict, Optional
-from .redis_client import redis_client, rk
+from .redis_client import redis_client, rk, cache_get, cache_set
+
+# Queue key helpers
+EMAIL_QUEUE = rk("queue", "email")
+SMS_QUEUE = rk("queue", "sms")
+EMAIL_PROCESSING = rk("queue", "email", "processing")
+SMS_PROCESSING = rk("queue", "sms", "processing")
+EMAIL_DLQ = rk("queue", "email", "dlq")
+SMS_DLQ = rk("queue", "sms", "dlq")
 
 
-def push_email_job(
-    email_type: str,
-    to_email: str,
-    data: Dict[str, Any],
-    job_id: Optional[str] = None
-) -> str:
-    """
-    Push an email job to the Redis queue.
-    
-    Args:
-        email_type: Type of email (welcome, order_confirmation, cashback_confirmed, withdrawal_processed)
-        to_email: Recipient email address
-        data: Template data for the email
-        job_id: Optional job ID (generated if not provided)
-        
-    Returns:
-        Job ID
-        
-    Example:
-        push_email_job(
-            "order_confirmation",
-            "user@example.com",
-            {
-                "user_name": "John",
-                "order_number": "ORD-12345",
-                "total_amount": 1500,
-                "items_count": 3,
-                "order_url": "https://app.com/orders/ORD-12345"
-            }
-        )
-    """
-    if not job_id:
-        job_id = f"email_{uuid.uuid4().hex[:12]}"
-    
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def cart_key(user_id: int) -> str:
+    return rk("cart", str(user_id))
+
+
+def get_cart(user_id: int) -> dict:
+    return cache_get(cart_key(user_id)) or {"items": []}
+
+
+def save_cart(user_id: int, cart: dict, ttl: int = 60 * 60 * 24 * 3):
+    cache_set(cart_key(user_id), cart, ttl)
+
+
+def clear_cart(user_id: int):
+    redis_client.delete(cart_key(user_id))
+
+
+def add_item(user_id: int, item: dict):
+    cart = get_cart(user_id)
+    items = cart.get("items", [])
+    # If variant matches, increment quantity
+    for existing in items:
+        if existing["variant_id"] == item["variant_id"]:
+            existing["quantity"] += item["quantity"]
+            break
+    else:
+        items.append(item)
+    cart["items"] = items
+    save_cart(user_id, cart)
+
+
+def update_item(user_id: int, variant_id: int, quantity: int):
+    cart = get_cart(user_id)
+    items = cart.get("items", [])
+    for existing in items:
+        if existing["variant_id"] == variant_id:
+            if quantity <= 0:
+                items.remove(existing)
+            else:
+                existing["quantity"] = quantity
+            break
+    cart["items"] = items
+    save_cart(user_id, cart)
+
+
+def remove_item(user_id: int, variant_id: int):
+    cart = get_cart(user_id)
+    cart["items"] = [i for i in cart.get("items", []) if i["variant_id"] != variant_id]
+    save_cart(user_id, cart)
+
+
+# ---------------- Job Queue Helpers ----------------
+
+def push_email_job(email_type: str, to_email: str, data: dict):
     job = {
-        "id": job_id,
         "type": email_type,
         "to": to_email,
         "data": data,
+        "enqueued_at": _now_iso(),
         "attempts": 0,
-        "createdAt": datetime.utcnow().isoformat()
     }
-    
-    # Push to queue
-    redis_client.rpush(rk("queue", "email"), json.dumps(job))
-    
-    return job_id
+    redis_client.rpush(EMAIL_QUEUE, json.dumps(job))
 
 
-def push_sms_job(
-    sms_type: str,
-    mobile: str,
-    data: Dict[str, Any],
-    job_id: Optional[str] = None
-) -> str:
-    """
-    Push an SMS job to the Redis queue.
-    
-    Args:
-        sms_type: Type of SMS (otp, order_confirmation, cashback_credited, withdrawal_processed)
-        mobile: Recipient mobile number (with country code)
-        data: Template data for the SMS
-        job_id: Optional job ID (generated if not provided)
-        
-    Returns:
-        Job ID
-        
-    Example:
-        push_sms_job(
-            "otp",
-            "+919876543210",
-            {"otp": "123456"}
-        )
-    """
-    if not job_id:
-        job_id = f"sms_{uuid.uuid4().hex[:12]}"
-    
+def push_sms_job(sms_type: str, mobile: str, data: dict):
     job = {
-        "id": job_id,
         "type": sms_type,
         "mobile": mobile,
         "data": data,
+        "enqueued_at": _now_iso(),
         "attempts": 0,
-        "createdAt": datetime.utcnow().isoformat()
     }
-    
-    # Push to queue
-    redis_client.rpush(rk("queue", "sms"), json.dumps(job))
-    
-    return job_id
+    redis_client.rpush(SMS_QUEUE, json.dumps(job))
 
 
-def push_cashback_sync_job(
-    affiliate_network: str,
-    data: Dict[str, Any],
-    job_id: Optional[str] = None
-) -> str:
-    """
-    Push a cashback sync job to the Redis queue.
-    
-    Args:
-        affiliate_network: Network name (admitad, vcommission, cuelinks)
-        data: Sync data
-        job_id: Optional job ID (generated if not provided)
-        
-    Returns:
-        Job ID
-    """
-    if not job_id:
-        job_id = f"cashback_{uuid.uuid4().hex[:12]}"
-    
-    job = {
-        "id": job_id,
-        "network": affiliate_network,
-        "data": data,
-        "attempts": 0,
-        "createdAt": datetime.utcnow().isoformat()
-    }
-    
-    # Push to queue
-    redis_client.rpush(rk("queue", "cashback"), json.dumps(job))
-    
-    return job_id
-
-
-def get_queue_stats() -> Dict[str, Any]:
-    """Get statistics for all queues."""
+def get_queue_stats() -> dict:
     return {
         "email": {
-            "pending": redis_client.llen(rk("queue", "email")),
-            "processing": redis_client.scard(rk("queue", "email", "processing")),
-            "dead_letter": redis_client.llen(rk("queue", "email", "dlq")),
+            "pending": redis_client.llen(EMAIL_QUEUE),
+            "processing": redis_client.scard(EMAIL_PROCESSING),
+            "dlq": redis_client.llen(EMAIL_DLQ),
         },
         "sms": {
-            "pending": redis_client.llen(rk("queue", "sms")),
-            "processing": redis_client.scard(rk("queue", "sms", "processing")),
-            "dead_letter": redis_client.llen(rk("queue", "sms", "dlq")),
+            "pending": redis_client.llen(SMS_QUEUE),
+            "processing": redis_client.scard(SMS_PROCESSING),
+            "dlq": redis_client.llen(SMS_DLQ),
         },
-        "cashback": {
-            "pending": redis_client.llen(rk("queue", "cashback")),
-            "processing": redis_client.scard(rk("queue", "cashback", "processing")),
-            "dead_letter": redis_client.llen(rk("queue", "cashback", "dlq")),
-        }
     }
 
 
-def get_dead_letter_jobs(queue_name: str, start: int = 0, limit: int = 100) -> list:
-    """Get failed jobs from dead letter queue."""
-    dlq_key = rk("queue", queue_name, "dlq")
-    jobs = redis_client.lrange(dlq_key, start, start + limit - 1)
-    return [json.loads(job) for job in jobs]
+def _dlq_key(queue_name: str) -> str:
+    return EMAIL_DLQ if queue_name == "email" else SMS_DLQ
+
+
+def _queue_key(queue_name: str) -> str:
+    return EMAIL_QUEUE if queue_name == "email" else SMS_QUEUE
+
+
+def get_dead_letter_jobs(queue_name: str) -> list[dict]:
+    raw = redis_client.lrange(_dlq_key(queue_name), 0, -1)
+    jobs = []
+    for r in raw:
+        try:
+            jobs.append(json.loads(r))
+        except Exception:
+            jobs.append({"raw": r})
+    return jobs
 
 
 def retry_dead_letter_job(queue_name: str, index: int) -> bool:
-    """Retry a specific job from the dead letter queue."""
-    dlq_key = rk("queue", queue_name, "dlq")
-    queue_key = rk("queue", queue_name)
-    
-    # Get the job
-    job_data = redis_client.lindex(dlq_key, index)
-    if not job_data:
+    dlq = _dlq_key(queue_name)
+    items = redis_client.lrange(dlq, 0, -1)
+    if index < 0 or index >= len(items):
         return False
-    
-    # Parse and reset attempts
-    job = json.loads(job_data)
-    job["attempts"] = 0
-    job.pop("failedAt", None)
-    job.pop("error", None)
-    
-    # Remove from DLQ and push to main queue
-    redis_client.lrem(dlq_key, 1, job_data)
-    redis_client.rpush(queue_key, json.dumps(job))
-    
+    job_str = items.pop(index)
+    # Push back to main queue
+    redis_client.rpush(_queue_key(queue_name), job_str)
+    # Rebuild DLQ list
+    redis_client.delete(dlq)
+    for item in items:
+        redis_client.rpush(dlq, item)
     return True
 
 
 def clear_dead_letter_queue(queue_name: str) -> int:
-    """Clear all jobs from a dead letter queue. Returns number of jobs cleared."""
-    dlq_key = rk("queue", queue_name, "dlq")
-    count = redis_client.llen(dlq_key)
-    redis_client.delete(dlq_key)
+    dlq = _dlq_key(queue_name)
+    count = redis_client.llen(dlq)
+    if count:
+        redis_client.delete(dlq)
     return count

@@ -31,14 +31,14 @@ import { SearchBar } from "@/components/common/SearchBar";
 export function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const cartItems = useCartStore((state) => state.items);
-  const { toggleMobileMenu, isMobileMenuOpen, toggleCartDrawer } = useUIStore();
+  const { toggleCartDrawer } = useUIStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
 
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 hidden w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:block">
       {/* Top Bar */}
       <div className="hidden border-b bg-primary text-primary-foreground md:block">
         <div className="container flex h-8 items-center justify-between text-xs">
@@ -60,16 +60,7 @@ export function Header() {
       {/* Main Header */}
       <div className="container">
         <div className="flex h-16 items-center justify-between gap-4">
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={toggleMobileMenu}
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
+          {/* Mobile Menu removed in favor of bottom More tab */}
 
           {/* Logo */}
           <Link href={ROUTES.home} className="flex items-center gap-2">
@@ -267,55 +258,7 @@ export function Header() {
         </div>
       </nav>
 
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 top-16 z-40 bg-background md:hidden">
-          <div className="container py-4">
-            <div className="mb-4">
-              <SearchBar />
-            </div>
-            <nav className="flex flex-col gap-2">
-              <Link
-                href={ROUTES.coupons}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
-                onClick={toggleMobileMenu}
-              >
-                <Tag className="h-4 w-4" />
-                Coupons & Deals
-              </Link>
-              <Link
-                href={ROUTES.merchants}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
-                onClick={toggleMobileMenu}
-              >
-                <Store className="h-4 w-4" />
-                Stores
-              </Link>
-              <Link
-                href={ROUTES.products}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
-                onClick={toggleMobileMenu}
-              >
-                <Gift className="h-4 w-4" />
-                Gift Cards
-              </Link>
-              <hr className="my-2" />
-              <p className="px-3 text-xs font-semibold text-muted-foreground">CATEGORIES</p>
-              {CATEGORIES.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`${ROUTES.coupons}?category=${category.slug}`}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
-                  onClick={toggleMobileMenu}
-                >
-                  <span>{category.icon}</span>
-                  {category.name}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </div>
-      )}
+      {/* Mobile menu removed; secondary links accessible via bottom More tab */}
     </header>
   );
 }

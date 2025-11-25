@@ -1,5 +1,6 @@
 from sqlalchemy import Integer, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime
 from ..database import Base
 
 class OrderItem(Base):
@@ -20,6 +21,7 @@ class OrderItem(Base):
     
     fulfillment_status: Mapped[str] = mapped_column(String(50), default="pending")
     voucher_code: Mapped[str | None] = mapped_column(String(255))  # For gift cards
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     
     # Relationships
     order = relationship("Order", back_populates="items")

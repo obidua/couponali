@@ -15,6 +15,7 @@ from ...schemas.order import (
 )
 from ...sms import send_voucher_sms
 from ...email import send_voucher_email
+from ...events import publish_order_event
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -171,6 +172,8 @@ def fulfill_order(
         order.fulfillment_status = "processing"
     
     db.commit()
+    # Publish status change event
+    publish_order_event(order.order_number, order.status, order.payment_status, order.fulfillment_status)
     
     # Send SMS notification with voucher codes
     user = db.query(User).filter(User.id == order.user_id).first()
@@ -233,6 +236,7 @@ def update_order_status(
     
     order.updated_at = datetime.utcnow()
     db.commit()
+    publish_order_event(order.order_number, order.status, order.payment_status, order.fulfillment_status)
     
     return {
         "success": True,

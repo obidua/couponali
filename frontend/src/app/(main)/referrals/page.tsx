@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Share2, Users, Wallet, Gift, MessageCircle, Twitter, Facebook } from "lucide-react";
+import { Copy, Check, Share2, Users, Wallet, Gift, MessageCircle, Twitter, Facebook, Trophy, Award, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,16 @@ const mockReferrals: Referral[] = [
 
 export default function ReferralsPage() {
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [achievements] = useState([
+    { id: 1, title: "Rookie Referrer", desc: "First successful referral", icon: Star, achieved: true },
+    { id: 2, title: "Streak Saver", desc: "3 referrals in 7 days", icon: Trophy, achieved: false },
+    { id: 3, title: "Top Influencer", desc: "10 total referrals", icon: Award, achieved: false },
+  ]);
+  const [rewards] = useState([
+    { id: 1, title: "₹100 Bonus Cashback", cost: "5 referrals", status: "locked" },
+    { id: 2, title: "₹250 Gift Card", cost: "10 referrals", status: "locked" },
+    { id: 3, title: "Exclusive Badge", cost: "1 referral", status: "available" },
+  ]);
 
   const totalReferrals = mockReferrals.length;
   const activeReferrals = mockReferrals.filter((r) => r.status === "active" || r.status === "earned").length;
@@ -247,6 +257,52 @@ export default function ReferralsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Achievements */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="h-5 w-5" /> Badges & Achievements
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-3">
+          {achievements.map((a) => (
+            <div key={a.id} className="flex items-start gap-3 rounded-lg border p-3">
+              <a.icon className={`h-5 w-5 ${a.achieved ? "text-green-600" : "text-muted-foreground"}`} />
+              <div>
+                <p className="font-semibold">{a.title}</p>
+                <p className="text-xs text-muted-foreground">{a.desc}</p>
+                <Badge variant={a.achieved ? "success" : "secondary"} className="mt-1">
+                  {a.achieved ? "Unlocked" : "Locked"}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Rewards Catalog */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gift className="h-5 w-5" /> Rewards Catalog
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-3">
+          {rewards.map((r) => (
+            <div key={r.id} className="flex flex-col rounded-lg border p-3">
+              <p className="font-semibold">{r.title}</p>
+              <p className="text-sm text-muted-foreground">Requires: {r.cost}</p>
+              <Badge variant={r.status === "available" ? "success" : "secondary"} className="mt-2">
+                {r.status === "available" ? "Available" : "Locked"}
+              </Badge>
+              <Button className="mt-3" size="sm" disabled={r.status !== "available"}>
+                Redeem
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Referrals Table */}
       <Card>

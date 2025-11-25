@@ -28,12 +28,18 @@ export const merchantsAPI = {
 
   getFeatured: async (limit: number = 12): Promise<Merchant[]> => {
     const response = await apiClient.get(`/merchants/featured?limit=${limit}`);
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray(raw.data)) return raw.data;
+    return [];
   },
 
   getPopular: async (limit: number = 12): Promise<Merchant[]> => {
     const response = await apiClient.get(`/merchants/popular?limit=${limit}`);
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray(raw.data)) return raw.data;
+    return [];
   },
 
   search: async (query: string, limit: number = 10): Promise<Merchant[]> => {

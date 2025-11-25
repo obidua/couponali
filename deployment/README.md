@@ -135,10 +135,12 @@ sudo systemctl daemon-reload
 # Enable services
 sudo systemctl enable coupon-backend
 sudo systemctl enable coupon-frontend
+sudo systemctl enable coupon-workers
 
 # Start services
 sudo systemctl start coupon-backend
 sudo systemctl start coupon-frontend
+sudo systemctl start coupon-workers
 ```
 
 ### 8. Setup Nginx
@@ -156,13 +158,19 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 9. Setup PM2 Workers
+### 9. Log Rotation
 ```bash
-cd /var/www/coupon-commerce
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-# Run the command it outputs
+sudo cp deployment/logrotate.conf /etc/logrotate.d/coupon-commerce
+sudo logrotate -f /etc/logrotate.conf
+```
+
+### 10. Database Backups (cron)
+```bash
+# One-off backup
+sudo POSTGRES_USER=coupon_user POSTGRES_DB=coupon_commerce ./deployment/backup.sh
+
+# Cron daily at 2am (edit with crontab -e)
+0 2 * * * POSTGRES_USER=coupon_user POSTGRES_DB=coupon_commerce /var/www/coupon-commerce/deployment/backup.sh
 ```
 
 ## Deployment

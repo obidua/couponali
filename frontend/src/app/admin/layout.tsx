@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export default function AdminLayout({
   children,
@@ -52,6 +53,7 @@ export default function AdminLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5" />
             </Button>

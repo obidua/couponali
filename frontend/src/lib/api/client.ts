@@ -46,11 +46,11 @@ apiClient.interceptors.response.use(
         if (authStorage) {
           const { state } = JSON.parse(authStorage);
           if (state?.refreshToken) {
-            const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
               refresh_token: state.refreshToken,
             });
 
-            const { access_token, refresh_token } = response.data;
+            const { access_token, refresh_token } = (response.data?.data ?? response.data) as { access_token: string; refresh_token?: string };
 
             // Update stored tokens
             const updatedState = {

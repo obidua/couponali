@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, HTTPException, Depends
+from fastapi import APIRouter, Header, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, desc, and_
 from datetime import datetime
@@ -14,12 +14,30 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
+def verify_admin_ip(request: Request):
+    """Enforce optional admin IP whitelist.
+    Uses ADMIN_IP_WHITELIST env (comma-separated). Always allow localhost loopback.
+    If unset, no restriction applied.
+    """
+    from ...config import get_settings
+    settings = get_settings()
+    whitelist = getattr(settings, "ADMIN_IP_WHITELIST", "") or ""
+    if not whitelist:
+        return True
+    allowed = {ip.strip() for ip in whitelist.split(',') if ip.strip()}
+    allowed.update({"127.0.0.1", "::1"})
+    client_ip = request.client.host if request.client else None
+    if client_ip not in allowed:
+        raise HTTPException(status_code=403, detail="Admin access forbidden from this IP")
+    return True
+
 settings = get_settings()
 
 
-def require_admin(authorization: str | None = Header(None)):
+def require_admin(authorization: str | None = Header(None), request: Request = None):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
+    verify_admin_ip(request)
     return True
 
 

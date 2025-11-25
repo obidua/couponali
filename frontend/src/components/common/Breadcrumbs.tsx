@@ -8,7 +8,7 @@ interface BreadcrumbsProps {
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-4">
+    <nav aria-label="Breadcrumb" className="mb-4 hidden sm:block">
       <ol className="flex items-center gap-2 text-sm text-muted-foreground">
         <li>
           <Link href="/" className="flex items-center hover:text-foreground">

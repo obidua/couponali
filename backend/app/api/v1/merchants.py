@@ -82,6 +82,67 @@ def list_merchants(
     return response
 
 
+@router.get("/featured")
+def featured_merchants(limit: int = 12, db: Session = Depends(get_db)):
+    """Return featured merchants. Currently approximated using newest active merchants.
+    When an explicit feature flag is added, filter on that instead.
+    Cached for 5 minutes.
+    """
+    cache_key = rk("cache","merchants","featured",str(limit))
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+    query = (
+        select(Merchant)
+        .where(Merchant.is_active == True)
+        .order_by(Merchant.created_at.desc())
+        .limit(limit)
+    )
+    merchants = db.scalars(query).all()
+    data = [
+        {
+            "id": m.id,
+            "name": m.name,
+            "slug": m.slug,
+            "logo_url": m.logo_url,
+            "description": m.description,
+        }
+        for m in merchants
+    ]
+    response = {"success": True, "data": data}
+    cache_set(cache_key, response, 300)
+    return response
+
+
+@router.get("/featured")
+def featured_merchants(limit: int = 12, db: Session = Depends(get_db)):
+    """Return a lightweight list of featured merchants.
+
+    NOTE: The current schema does not include an explicit `is_featured` flag.
+    Until a migration adds that column, we approximate "featured" merchants by
+    selecting the most recently created active merchants (ordered by created_at desc).
+    This allows the frontend to render a featured section without schema changes.
+    """
+    query = (
+        select(Merchant)
+        .where(Merchant.is_active == True)
+        .order_by(Merchant.created_at.desc())
+        .limit(limit)
+    )
+    merchants = db.scalars(query).all()
+    data = [
+        {
+            "id": m.id,
+            "name": m.name,
+            "slug": m.slug,
+            "logo_url": m.logo_url,
+            "description": m.description,
+        }
+        for m in merchants
+    ]
+    return {"success": True, "data": data}
+
+
 @router.get("/{slug}")
 def get_merchant(slug: str, db: Session = Depends(get_db)):
     """Get merchant by slug"""

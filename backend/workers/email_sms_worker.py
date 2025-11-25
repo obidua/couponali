@@ -162,6 +162,7 @@ def _get_email_subject(email_type: str, data: dict) -> str:
         "cashback_confirmed": "Cashback Credited to Your Wallet 💰",
         "withdrawal_processed": "Withdrawal Processed Successfully ✅",
         "password_reset": "Reset Your Password",
+        "gift_card_delivery": "Your Gift Card Code is Ready 🎁",
     }
     return subjects.get(email_type, "Notification from CouponAli")
 
@@ -242,6 +243,33 @@ def _get_email_html(email_type: str, data: dict) -> str:
                 </div>
                 <p>The amount will be credited to your account within 24-48 hours.</p>
                 <p style="margin-top: 30px;">Thank you!<br>Team CouponAli</p>
+            </div>
+        """,
+        "gift_card_delivery": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #4F46E5;">Your Gift Card 🎁</h1>
+                <p>Hi {data.get('user_name', 'there')},</p>
+                <p>Here is your gift card code. Use it at checkout to redeem its value.</p>
+                <div style="background: #F3F4F6; padding: 24px; border-radius: 10px; margin: 20px 0; text-align: center;">
+                    <h2 style="letter-spacing: 4px; font-size: 28px; color: #4F46E5; margin: 0;">{data.get('code','XXXX-XXXX')}</h2>
+                    <p style="margin-top:12px; font-size:16px;">Value: <strong>₹{data.get('value','0')}</strong></p>
+                </div>
+                {f'<p>This card expires on <strong>{data.get("expires_at")}</strong>.</p>' if data.get('expires_at') else ''}
+                <p style="font-size:12px; color:#555;">Keep this code secure. Treat it like cash.</p>
+                <p>Happy saving!<br>Team CouponAli</p>
+            </div>
+        """,
+        "password_reset": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #4F46E5;">Reset Your Password</h1>
+                <p>Hi {data.get('user_name', 'there')},</p>
+                <p>We received a request to reset your password. Click the button below to choose a new one:</p>
+                <div style="background: #EEF2FF; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                    <a href="{data.get('reset_url', '#')}" style="background: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a>
+                    <p style="font-size: 12px; color: #555; margin-top: 12px;">Link expires in 30 minutes.</p>
+                </div>
+                <p>If you did not request this change, you can safely ignore this email.</p>
+                <p>Stay secure,<br>Team CouponAli</p>
             </div>
         """,
     }

@@ -32,13 +32,14 @@ const STATUS_MAP: Record<string, AffiliateStatus> = {
  * Fetch from Admitad API
  */
 async function fetchAdmitad(): Promise<AffiliateTransaction[]> {
-  if (!process.env.ADMITAD_ACCESS_TOKEN) {
-    console.warn("[admitad] Missing ADMITAD_ACCESS_TOKEN; skipping.");
+  const token = await getAdmitadToken();
+  if (!token) {
+    console.warn("[admitad] Missing token/creds; skipping.");
     return [];
   }
-  const url = `https://api.admitad.com/statistics/actions/?date_start=${getDateDaysAgo(7)}&limit=100`;
+  const url = `https://api.admitad.com/statistics/actions/?date_start=${getDateDaysAgo(7)}&limit=200`;
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${process.env.ADMITAD_ACCESS_TOKEN}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
     console.error("[admitad] API error", res.status, await res.text());
@@ -66,7 +67,7 @@ async function fetchVCommission(): Promise<AffiliateTransaction[]> {
     console.warn("[vcommission] Missing VCOMMISSION_TOKEN; skipping.");
     return [];
   }
-  const url = `https://api.vcommission.com/transactions?from=${getDateDaysAgo(7)}&limit=100`;
+  const url = `https://api.vcommission.com/transactions?from=${getDateDaysAgo(7)}&limit=200`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env.VCOMMISSION_TOKEN}` },
   });
@@ -96,7 +97,7 @@ async function fetchCuelinks(): Promise<AffiliateTransaction[]> {
     console.warn("[cuelinks] Missing CUELINKS_API_KEY; skipping.");
     return [];
   }
-  const url = `https://api.cuelinks.com/transactions?start_date=${getDateDaysAgo(7)}&end_date=${getDateDaysAgo(0)}`;
+  const url = `https://api.cuelinks.com/transactions?start_date=${getDateDaysAgo(7)}&end_date=${getDateDaysAgo(0)}&limit=200`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env.CUELINKS_API_KEY}` },
   });
@@ -121,6 +122,33 @@ async function fetchCuelinks(): Promise<AffiliateTransaction[]> {
 function normalizeStatus(raw: string | undefined): AffiliateStatus {
   if (!raw) return "pending";
   return STATUS_MAP[raw.toLowerCase()] || "pending";
+}
+
+async function getAdmitadToken(): Promise<string | null> {
+  if (process.env.ADMITAD_ACCESS_TOKEN) return process.env.ADMITAD_ACCESS_TOKEN;
+  const id = process.env.ADMITAD_CLIENT_ID;
+  const secret = process.env.ADMITAD_CLIENT_SECRET;
+  const scope = "statistics actions";
+  if (!id || !secret) {
+    return null;
+  }
+  const body = new URLSearchParams({
+    client_id: id,
+    client_secret: secret,
+    grant_type: "client_credentials",
+    scope,
+  });
+  const res = await fetch("https://api.admitad.com/token/", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok) {
+    console.error("[admitad] token error", res.status, await res.text());
+    return null;
+  }
+  const data = await res.json();
+  return data.access_token || null;
 }
 
 async function processTransactions(transactions: AffiliateTransaction[]): Promise<void> {
@@ -297,7 +325,8 @@ async function runScheduledSync(): Promise<void> {
       console.error("Error in cashback sync:", error);
     }
 
-    await Bun.sleep(6 * 60 * 60 * 1000);
+    const hours = Number(process.env.AFFILIATE_SYNC_INTERVAL_HOURS || 6);
+    await Bun.sleep(hours * 60 * 60 * 1000);
   }
 }
 

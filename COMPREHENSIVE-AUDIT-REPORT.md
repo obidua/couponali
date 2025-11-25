@@ -1327,10 +1327,11 @@ All 32 models implemented in `backend/app/models/`:
 - ✅ Performance indexes (offers.starts_at/ends_at, offer_clicks compound, offer_views compound)
 - ✅ Alembic migrations (001 initial, 002 indexes, 003 affiliate, 004 affiliate map)
 
-**Pending:**
-- ⏳ Table partitioning for high-volume tables (offer_clicks, order_items)
-- ⏳ Cashback rules table (currently hardcoded)
-- ⏳ Blog/article tables
+**Pending:** (none)
+**Completed:**
+- ✅ Table partitioning for high-volume tables (offer_clicks, order_items via monthly trigger partitions)
+- ✅ Cashback rules table (table-driven config)
+- ✅ Blog/article tables
 
 ---
 

@@ -42,12 +42,18 @@ export const offersAPI = {
 
   getFeatured: async (limit: number = 12): Promise<Offer[]> => {
     const response = await apiClient.get(`/offers/featured?limit=${limit}`);
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray(raw.data)) return raw.data;
+    return [];
   },
 
   getExclusive: async (limit: number = 12): Promise<Offer[]> => {
     const response = await apiClient.get(`/offers/exclusive?limit=${limit}`);
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray(raw.data)) return raw.data;
+    return [];
   },
 
   getExpiringSoon: async (days: number = 7, limit: number = 12): Promise<Offer[]> => {

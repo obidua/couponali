@@ -25,6 +25,7 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      ENABLE_PROMETHEUS: "true"
     deploy:
       resources:
         limits:
@@ -125,6 +126,33 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: coupon-prometheus
+    volumes:
+      - ./deployment/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: coupon-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./deployment/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
 
   postgres:
     image: postgres:16-alpine

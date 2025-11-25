@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     ADMITAD_TOKEN: str = ""  # OAuth token for Admitad API
     VCOMMISSION_API_KEY: str = ""
     CUELINKS_API_KEY: str = ""
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+    ADMIN_IP_WHITELIST: str = ""  # Comma-separated list of allowed IPs for admin endpoints
+    SENTRY_DSN: str = ""
+    SENTRY_ENVIRONMENT: str = "development"
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
 
     class Config:
         env_file = ".env"

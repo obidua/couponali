@@ -85,7 +85,7 @@ def seed_admin_user(session: Session):
     if not admin:
         admin = User(
             email="admin@couponali.com",
-            hashed_password=get_password_hash("admin123"),
+            password_hash=get_password_hash("admin123"),
             is_active=True,
             is_admin=True,
         )
@@ -93,7 +93,10 @@ def seed_admin_user(session: Session):
         session.commit()
         print("✓ Admin user created (admin@couponali.com / admin123)")
     else:
-        print("✓ Admin user already exists")
+        # Ensure password is set for existing admin (force set for dev)
+        admin.password_hash = get_password_hash("admin123")
+        session.commit()
+        print("✓ Admin user password updated")
     return admin
 
 def seed_roles_permissions(session: Session):

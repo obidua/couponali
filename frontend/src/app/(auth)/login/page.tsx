@@ -60,9 +60,9 @@ export default function LoginPage() {
                   value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                   message: "Invalid email address",
                 },
+                onChange: () => clearError(),
               })}
               error={!!errors.email}
-              onChange={() => clearError()}
             />
             {errors.email && (
               <p className="text-xs text-destructive">{errors.email.message}</p>
@@ -90,9 +90,9 @@ export default function LoginPage() {
                     value: 6,
                     message: "Password must be at least 6 characters",
                   },
+                  onChange: () => clearError(),
                 })}
                 error={!!errors.password}
-                onChange={() => clearError()}
               />
               <Button
                 type="button"

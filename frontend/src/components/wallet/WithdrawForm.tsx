@@ -64,11 +64,13 @@ export function WithdrawForm({ open, onClose, balance, onSubmit }: WithdrawFormP
     try {
       const details: Record<string, string> = {};
       if (method === "upi") {
-        details.upi_id = data.upi_id;
+        if (data.upi_id) {
+          details.upi_id = data.upi_id;
+        }
       } else if (method === "bank") {
-        details.account_number = data.account_number;
-        details.ifsc_code = data.ifsc_code;
-        details.account_name = data.account_name;
+        if (data.account_number) details.account_number = data.account_number;
+        if (data.ifsc_code) details.ifsc_code = data.ifsc_code;
+        if (data.account_name) details.account_name = data.account_name;
       }
 
       await onSubmit(data.amount, method, details);

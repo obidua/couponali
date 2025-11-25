@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Header, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, Field
-from ...security import create_access_token, get_password_hash, verify_password
+from ...security import create_access_token, get_password_hash, verify_password, revoke_token, decode_token
 from ...redis_client import rk, cache_set, cache_get, cache_invalidate, rate_limit
 from ...queue import push_email_job, push_sms_job
 from ...otp import request_otp as create_otp, verify_and_consume_otp
@@ -329,6 +329,8 @@ def logout(authorization: str | None = Header(None)):
         raise HTTPException(status_code=401, detail="Missing token")
     token = authorization.split()[1]
     cache_invalidate(rk("session", token))
+    # Add to blacklist so it can't be reused until expiry
+    revoke_token(token)
     return
 
 
@@ -416,3 +418,55 @@ def verify_email(
             "is_verified": True
         }
     }
+
+# ---------------------- Password Reset Flow ----------------------
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
+
+RESET_TTL_SECONDS = 1800  # 30 minutes
+
+@router.post("/password-reset/request", response_model=dict)
+def password_reset_request(payload: PasswordResetRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        # Do not reveal existence
+        return {"success": True, "message": "If the email exists a reset link was sent."}
+    token = uuid.uuid4().hex
+    cache_set(rk("pwdreset", token), {"user_id": user.id}, RESET_TTL_SECONDS)
+    reset_url = f"{settings.FRONTEND_BASE_URL or 'https://app.example.com'}/reset-password?token={token}"
+    if settings.EMAIL_ENABLED:
+        push_email_job("password_reset", user.email, {"user_name": user.full_name or user.email, "reset_url": reset_url})
+    return {"success": True, "message": "If the email exists a reset link was sent."}
+
+@router.post("/password-reset/confirm", response_model=dict)
+def password_reset_confirm(payload: PasswordResetConfirm, db: Session = Depends(get_db)):
+    data = cache_get(rk("pwdreset", payload.token))
+    if not data:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    user = db.query(User).filter(User.id == data.get("user_id")).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid token context")
+    user.password_hash = get_password_hash(payload.new_password)
+    db.commit()
+    cache_invalidate(rk("pwdreset", payload.token))
+    # Invalidate existing sessions: naive approach scan session key of current access if provided
+    return {"success": True, "message": "Password updated successfully"}
+
+# ---------------------- Token Introspection ----------------------
+
+@router.get("/me", response_model=dict)
+def me(authorization: str | None = Header(None), db: Session = Depends(get_db)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing token")
+    token = authorization.split()[1]
+    payload = decode_token(token)
+    user_id = payload.get("sub")
+    user = db.query(User).filter(User.id == int(user_id)).first() if user_id else None
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"success": True, "data": {"id": user.id, "email": user.email, "full_name": user.full_name}}

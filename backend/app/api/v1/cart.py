@@ -1,4 +1,4 @@
-"""Cart validation and checkout endpoints."""
+"""Cart validation, Redis cart persistence, and checkout endpoints."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Dict
@@ -24,6 +24,8 @@ from ...schemas.cart import (
 from ...config import get_settings
 from ...email import send_order_confirmation, send_voucher_email
 from ...sms import send_order_notification
+from ...queue import get_cart as redis_get_cart, add_item, update_item, remove_item, clear_cart
+from ...queue import get_cart as redis_get_cart, add_item, update_item, remove_item, clear_cart
 
 settings = get_settings()
 router = APIRouter(prefix="/cart", tags=["Cart & Checkout"])
@@ -207,6 +209,49 @@ def validate_cart(
         is_valid=is_valid,
         errors=errors
     )
+
+
+@router.get("/", response_model=dict)
+def get_cart_state(current_user: User = Depends(get_current_user)):
+    """Return the user's cart stored in Redis."""
+    return {"success": True, "data": redis_get_cart(current_user.id)}
+
+
+@router.post("/add", response_model=dict)
+def add_to_cart(item: Dict, current_user: User = Depends(get_current_user)):
+    """Add item to cart stored in Redis. Expect variant_id and quantity."""
+    if "variant_id" not in item or "quantity" not in item:
+        raise HTTPException(status_code=400, detail="variant_id and quantity required")
+    add_item(
+        current_user.id,
+        {"variant_id": int(item["variant_id"]), "quantity": int(item["quantity"]), "product_id": item.get("product_id")},
+    )
+    return {"success": True, "data": redis_get_cart(current_user.id)}
+
+
+@router.post("/update", response_model=dict)
+def update_cart_item(item: Dict, current_user: User = Depends(get_current_user)):
+    """Update quantity for an item."""
+    if "variant_id" not in item or "quantity" not in item:
+        raise HTTPException(status_code=400, detail="variant_id and quantity required")
+    update_item(current_user.id, int(item["variant_id"]), int(item["quantity"]))
+    return {"success": True, "data": redis_get_cart(current_user.id)}
+
+
+@router.post("/remove", response_model=dict)
+def remove_cart_item(item: Dict, current_user: User = Depends(get_current_user)):
+    """Remove an item."""
+    if "variant_id" not in item:
+        raise HTTPException(status_code=400, detail="variant_id required")
+    remove_item(current_user.id, int(item["variant_id"]))
+    return {"success": True, "data": redis_get_cart(current_user.id)}
+
+
+@router.post("/clear", response_model=dict)
+def clear_cart_items(current_user: User = Depends(get_current_user)):
+    """Clear cart."""
+    clear_cart(current_user.id)
+    return {"success": True, "data": redis_get_cart(current_user.id)}
 
 
 @router.post("/checkout", response_model=CheckoutResponse)

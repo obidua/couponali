@@ -4,6 +4,7 @@ from ..services.affiliate_clients import AdmitadClient, VCommissionClient, CueLi
 from ..config import get_settings
 from typing import List
 import asyncio
+from ..metrics import observe_affiliate_sync
 
 settings = get_settings()
 
@@ -93,4 +94,9 @@ def sync_affiliate_transactions(db: Session) -> dict:
         if status == "confirmed" and tx.user_id:
             db.add(CashbackEvent(user_id=tx.user_id, amount=tx.amount, status="confirmed"))
     db.commit()
+    # Metrics
+    try:
+        observe_affiliate_sync(imported=imported, updated=updated, total_fetched=len(results))
+    except Exception:
+        pass
     return {"imported": imported, "updated": updated, "total": len(results)}

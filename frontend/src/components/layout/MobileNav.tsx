@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Tag, Store, MoreHorizontal, Gift, User, Wallet, Info, HelpCircle, FileText, Shield } from "lucide-react";
+import { Home, Tag, Store, MoreHorizontal, Gift, User, Wallet, Info, HelpCircle, FileText, Shield, Receipt, LogOut, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ROUTES, CATEGORIES } from "@/lib/constants";
@@ -14,20 +14,19 @@ const primaryItems = [
   { title: "Stores", href: ROUTES.merchants, icon: Store },
 ];
 
-const moreItems = [
+const baseMoreItems = [
   { title: "Gift Cards", href: ROUTES.products, icon: Gift },
   { title: "Earn Cashback", href: ROUTES.wallet, icon: Wallet },
-  { title: "Account", href: ROUTES.profile, icon: User, authRequired: true },
   { title: "About", href: ROUTES.about, icon: Info },
   { title: "How It Works", href: ROUTES.howItWorks, icon: Info },
   { title: "FAQ", href: ROUTES.faq, icon: HelpCircle },
   { title: "Terms", href: ROUTES.terms, icon: FileText },
   { title: "Privacy", href: ROUTES.privacy, icon: Shield },
-];
+] as const;
 
 export function MobileNav() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const [moreOpen, setMoreOpen] = useState(false);
 
   // Lock body scroll while the More menu is open
@@ -43,7 +42,10 @@ export function MobileNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden pb-[env(safe-area-inset-bottom)]"
+        aria-label="Bottom navigation"
+      >
         <div className="flex h-16 items-center justify-around">
           {primaryItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -76,7 +78,10 @@ export function MobileNav() {
         </div>
       </nav>
       {moreOpen && (
-        <div className="fixed inset-0 z-40 flex flex-col pb-20 pt-10 bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-40 flex flex-col pt-10 bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-sm"
+          style={{ paddingBottom: `calc(5rem + env(safe-area-inset-bottom))` }}
+        >
           <div className="mx-auto w-full max-w-md flex-1 overflow-y-auto px-4 animate-more-menu">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-semibold">More</h2>
@@ -88,24 +93,50 @@ export function MobileNav() {
                 Close
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {moreItems.map((item) => {
-                const href = item.authRequired && !isAuthenticated ? ROUTES.login : item.href;
-                const Icon = item.icon;
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(
+                isAuthenticated
+                  ? [
+                      { title: user?.first_name ? `Hi, ${user.first_name}` : "Account", href: ROUTES.profile, icon: Settings },
+                      { title: "My Orders", href: ROUTES.orders, icon: Receipt },
+                      { title: "Referrals", href: ROUTES.referrals, icon: Gift },
+                      ...baseMoreItems,
+                    ]
+                  : [
+                      { title: "Login", href: ROUTES.login, icon: User },
+                      { title: "Sign Up", href: ROUTES.register, icon: User },
+                      ...baseMoreItems,
+                    ]
+              ).map((item) => {
+                const Icon = item.icon as any;
                 return (
                   <Link
                     key={item.title}
-                    href={href}
+                    href={item.href}
                     onClick={() => setMoreOpen(false)}
                     className="group flex flex-col items-start gap-2 rounded-xl border p-3 text-xs hover:bg-accent/60 hover:shadow-md transition-colors duration-150 bg-white/70 backdrop-blur-sm"
                   >
                     <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary group-hover:bg-primary/15">
                       <Icon className="h-4 w-4" />
                     </div>
-                    <span className="font-medium text-foreground/80 group-hover:text-foreground">{item.authRequired && !isAuthenticated ? "Login" : item.title}</span>
+                    <span className="font-medium text-foreground/80 group-hover:text-foreground">{item.title}</span>
                   </Link>
                 );
               })}
+              {isAuthenticated && (
+                <button
+                  onClick={() => {
+                    logout();
+                    setMoreOpen(false);
+                  }}
+                  className="group flex flex-col items-start gap-2 rounded-xl border p-3 text-xs hover:bg-accent/60 hover:shadow-md transition-colors duration-150 bg-white/70 backdrop-blur-sm text-destructive"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-destructive/10 text-destructive group-hover:bg-destructive/15">
+                    <LogOut className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Logout</span>
+                </button>
+              )}
             </div>
             <div className="mt-8">
               <p className="mb-2 text-xs font-medium text-muted-foreground">Popular Categories</p>

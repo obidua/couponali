@@ -31,3 +31,5 @@ from .promo_code import PromoCode
 from .affiliate_click import AffiliateClick
 from .affiliate_transaction import AffiliateTransaction
 from .affiliate_merchant_map import AffiliateMerchantMap
+from .cashback_rule import CashbackRule
+from .blog_post import BlogPost

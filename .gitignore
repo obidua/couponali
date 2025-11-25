@@ -11,6 +11,9 @@ __pycache__/
 .env
 .env.local
 .env.*.local
+.env.backup
+*.rdb
+dump.rdb
 
 # Build outputs
 .next/

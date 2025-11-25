@@ -78,6 +78,66 @@ def list_offers(
     }
 
 
+@router.get("/featured")
+def featured_offers(limit: int = 12, db: Session = Depends(get_db)):
+    """Return a list of 'featured' offers.
+
+    Without an explicit is_featured flag in the schema we approximate
+    featured offers by taking the highest priority active offers, then
+    falling back to most recent if priorities are equal.
+    """
+    query = (
+        select(Offer, Merchant)
+        .join(Merchant)
+        .where(Offer.is_active == True)
+        .order_by(Offer.priority.desc(), Offer.created_at.desc())
+        .limit(limit)
+    )
+    results = db.execute(query).all()
+    data = [
+        {
+            "id": o.id,
+            "title": o.title,
+            "code": o.code,
+            "merchant_id": o.merchant_id,
+            "priority": o.priority,
+            "created_at": o.created_at.isoformat(),
+            "merchant": {"id": m.id, "name": m.name, "slug": m.slug},
+        }
+        for o, m in results
+    ]
+    return {"success": True, "data": data}
+
+
+@router.get("/exclusive")
+def exclusive_offers(limit: int = 12, db: Session = Depends(get_db)):
+    """Return a list of 'exclusive' offers.
+
+    Approximated using priority > 0. Adjust once is_exclusive column exists.
+    """
+    query = (
+        select(Offer, Merchant)
+        .join(Merchant)
+        .where(Offer.is_active == True, Offer.priority > 0)
+        .order_by(Offer.priority.desc(), Offer.created_at.desc())
+        .limit(limit)
+    )
+    results = db.execute(query).all()
+    data = [
+        {
+            "id": o.id,
+            "title": o.title,
+            "code": o.code,
+            "merchant_id": o.merchant_id,
+            "priority": o.priority,
+            "created_at": o.created_at.isoformat(),
+            "merchant": {"id": m.id, "name": m.name, "slug": m.slug},
+        }
+        for o, m in results
+    ]
+    return {"success": True, "data": data}
+
+
 @router.get("/{offer_id}")
 def get_offer(offer_id: int, db: Session = Depends(get_db)):
     """Get single offer by ID"""

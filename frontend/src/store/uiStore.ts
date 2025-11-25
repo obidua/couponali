@@ -7,6 +7,7 @@ interface UIState {
   isMobileMenuOpen: boolean;
   isCartDrawerOpen: boolean;
   isSearchOpen: boolean;
+  theme: "light" | "dark";
 
   // Toasts
   toasts: Toast[];
@@ -23,6 +24,8 @@ interface UIState {
   setCartDrawerOpen: (open: boolean) => void;
   toggleSearch: () => void;
   setSearchOpen: (open: boolean) => void;
+  toggleTheme: () => void;
+  setTheme: (theme: "light" | "dark") => void;
 
   // Toast actions
   addToast: (toast: Omit<Toast, 'id'>) => void;
@@ -38,6 +41,7 @@ export const useUIStore = create<UIState>()((set) => ({
   isMobileMenuOpen: false,
   isCartDrawerOpen: false,
   isSearchOpen: false,
+  theme: (typeof window !== "undefined" && (localStorage.getItem("theme") as "light" | "dark")) || "light",
   toasts: [],
   isPageLoading: false,
 
@@ -52,6 +56,21 @@ export const useUIStore = create<UIState>()((set) => ({
 
   toggleSearch: () => set((state) => ({ isSearchOpen: !state.isSearchOpen })),
   setSearchOpen: (open: boolean) => set({ isSearchOpen: open }),
+  toggleTheme: () =>
+    set((state) => {
+      const next = state.theme === "light" ? "dark" : "light";
+      if (typeof window !== "undefined") {
+        localStorage.setItem("theme", next);
+      }
+      return { theme: next };
+    }),
+  setTheme: (theme: "light" | "dark") =>
+    set(() => {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("theme", theme);
+      }
+      return { theme };
+    }),
 
   addToast: (toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substring(2, 9);
